@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant MVP (Bootstrap)</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <style>
+        /* Custom font import for a modern feel, similar to Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            /* === START: BACKGROUND IMAGE STYLES === */
+            background: url('https://t3.ftcdn.net/jpg/05/01/52/36/240_F_501523654_iTeRiR15SpnekpBQCWf11sip7THqF5oU.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover; /* Fallback for bg-light */
+            /* === END: BACKGROUND IMAGE STYLES === */
+        }
+
+        /* Custom scrollbar for chat area (Bootstrap doesn't include scrollbar utilities) */
+        #message-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        #message-container::-webkit-scrollbar-thumb {
+            background-color: #6c757d; /* Bootstrap secondary color */
+            border-radius: 3px;
+        }
+        #message-container::-webkit-scrollbar-track {
+            background-color: transparent;
+        }
+
+        .chat-message {
+            max-width: 85%;
+        }
+
+        /* Full height and flex container for the application layout */
+        .app-layout {
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sidebar visibility on mobile: Fixed position and custom translation */
+        #sidebar {
+            width: 280px; /* Equivalent to w-72 in Tailwind */
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1050; /* Above the overlay */
+            position: fixed;
+        }
+
+        .sidebar-open #sidebar {
+            transform: translateX(0);
+        }
+
+        /* Overlay for mobile sidebar: Equivalent to Bootstrap backdrop */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1040;
+            display: none;
+        }
+
+        /* Tool Alert Styling: Using custom positioning and transition */
+        #tool-alert {
+            right: 1rem;
+            bottom: 6rem;
+            z-index: 1060;
+            display: none;
+            transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        .tool-alert-show {
+            display: block !important;
+            transform: translateY(0) !important;
+            opacity: 1 !important;
+        }
+
+        /* Desktop sidebar: Overrides fixed position and translation */
+        @media (min-width: 992px) { /* Equivalent to lg breakpoint */
+            #sidebar {
+                position: relative !important;
+                transform: translateX(0) !important;
+                flex-shrink: 0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light text-dark">
+
+<!-- Mock Global Variables for UI Demo -->
+<script>
+    const __app_id = 'ai-assistant-mvp-1';
+    let currentUserId = 'user_' + Math.random().toString(36).substring(2, 9);
+    let currentChatId = null;
+    let mockChats = [
+        { id: 'chat-1', title: 'Plan for MVP Launch', lastMessage: 'The API spec looks good.' },
+        { id: 'chat-2', title: 'Tool: DB Connector', lastMessage: 'Created tool for PostgreSQL.' },
+        { id: 'chat-3', title: 'Weekly Report Draft', lastMessage: 'Summarized Q3 financial data.' },
+    ];
+    let mockMessages = {
+        'chat-1': [
+            { id: 1, role: 'user', content: 'What are the key steps for launching the MVP?' },
+            { id: 2, role: 'ai', content: 'The launch requires three main phases: **Development freeze** (Oct 10), **Internal QA & Beta** (Oct 15), and **Public Release** (Oct 22). What would you like to prioritize?' },
+        ],
+        'new-chat': [
+            { id: 1, role: 'ai', content: 'Hello! I am your AI Assistant. How can I help you today? Ask me a question or request a new tool!' }
+        ]
+    };
+    let mockTools = [
+        { name: 'Google Search', description: 'Access up-to-date web information.' },
+        { name: 'Code Interpreter', description: 'Run Python code snippets.' },
+    ];
+
+    let isLoggedIn = false;
+
+    /** Utility Functions */
+
+    // Function to create an SVG icon (using Lucide style for aesthetics)
+    function createIcon(dAttr, classes = "w-5 h-5") {
+        return `
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${classes}">
+                    <path d="${dAttr}"/>
+                </svg>`;
+    }
+
+    // Icon paths (simplified for common use)
+    const Icons = {
+        menu: "M3 12h18M3 6h18M3 18h18",
+        x: "M18 6L6 18M6 6l12 12",
+        plus: "M12 5v14M5 12h14",
+        send: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
+        tool: "M15 12l-5-5-5 5M15 12l-5 5-5-5",
+        trash: "M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2",
+        logOut: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
+        user: "M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2",
+        messageSquare: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+    };
+
+    /** App State & Logic */
+
+    function initApp() {
+        isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+        // Check for large screen size to determine initial sidebar state
+        if (window.innerWidth >= 992) {
+            document.body.classList.add('sidebar-open');
+            document.getElementById('overlay').classList.add('d-none'); // Ensure overlay is hidden on desktop
+        } else {
+            document.body.classList.remove('sidebar-open');
+        }
+
+        if (isLoggedIn) {
+            document.getElementById('login-screen').classList.add('d-none');
+            document.getElementById('app-screen').classList.remove('d-none');
+            startNewChat(false);
+            renderSidebar();
+            renderUserId();
+            renderToolsPanel();
+        } else {
+            document.getElementById('login-screen').classList.remove('d-none');
+            document.getElementById('app-screen').classList.add('d-none');
+        }
+    }
+
+    function renderUserId() {
+        const userIdDisplay = document.getElementById('user-id-display');
+        if (userIdDisplay) {
+            userIdDisplay.textContent = `User ID: ${currentUserId}`;
+        }
+    }
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const isOpen = document.body.classList.contains('sidebar-open');
+
+        // Toggle body class which controls the custom transform
+        document.body.classList.toggle('sidebar-open', !isOpen);
+
+        // Toggle overlay display (d-block / d-none)
+        overlay.classList.toggle('d-none', isOpen);
+    }
+
+    function mockLogin() {
+        const username = document.getElementById('username').value;
+        if (username) {
+            localStorage.setItem('isLoggedIn', 'true');
+            currentUserId = 'user-' + username.toLowerCase().replace(/[^a-z0-9]/g, '');
+            initApp();
+        } else {
+            document.getElementById('login-error').textContent = 'Please enter a username.';
+            setTimeout(() => document.getElementById('login-error').textContent = '', 3000);
+        }
+    }
+
+    function mockLogout() {
+        localStorage.removeItem('isLoggedIn');
+        isLoggedIn = false;
+        initApp();
+    }
+
+    function renderSidebar() {
+        const chatList = document.getElementById('chat-list');
+        chatList.innerHTML = '';
+
+        mockChats.forEach(chat => {
+            const isActive = currentChatId === chat.id;
+            const li = document.createElement('li');
+            li.className = 'w-100 mb-1';
+            li.innerHTML = `
+                    <button onclick="loadChat('${chat.id}')" class="btn w-100 text-start p-3 rounded-3 transition-colors ${isActive ? 'btn-primary text-white shadow' : 'text-light bg-dark-subtle border-0 hover-bg-secondary'}">
+                        <div class="fw-medium text-truncate">${chat.title}</div>
+                        <div class="small text-secondary text-truncate">${chat.lastMessage}</div>
+                    </button>
+                `;
+            chatList.appendChild(li);
+        });
+    }
+
+    function renderMessages(chatId) {
+        const container = document.getElementById('message-container');
+        container.innerHTML = '';
+        const messages = mockMessages[chatId] || [];
+
+        messages.forEach(msg => {
+            const isAI = msg.role === 'ai';
+            const messageHtml = `
+                    <div class="d-flex ${isAI ? 'justify-content-start' : 'justify-content-end'} mb-4">
+                        <div class="chat-message rounded-3 p-4 shadow-sm ${isAI
+                ? 'bg-white text-dark rounded-top-left-0'
+                : 'bg-primary text-white rounded-bottom-right-0'
+            }">
+                            <p class="small">${msg.content}</p>
+                        </div>
+                    </div>
+                `;
+            container.insertAdjacentHTML('beforeend', messageHtml);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function startNewChat(render=true) {
+        currentChatId = 'new-chat';
+        if (render) {
+            renderSidebar();
+            renderMessages(currentChatId);
+            if (window.innerWidth < 992) {
+                toggleSidebar();
+            }
+        }
+        document.getElementById('chat-title').textContent = 'New Chat - ID: new-chat';
+        document.getElementById('chat-input').focus();
+    }
+
+    function loadChat(chatId) {
+        currentChatId = chatId;
+        renderSidebar();
+        renderMessages(chatId);
+        const chatTitle = mockChats.find(c => c.id === chatId)?.title || 'Unknown Chat';
+        document.getElementById('chat-title').textContent = chatTitle + ` - ID: ${chatId}`;
+
+        if (window.innerWidth < 992) {
+            toggleSidebar();
+        }
+    }
+
+    function renderToolsPanel() {
+        const toolsContainer = document.getElementById('active-tools-list');
+        toolsContainer.innerHTML = '';
+
+        if (mockTools.length === 0) {
+            toolsContainer.innerHTML = '<p class="small text-light-emphasis p-3">No custom tools currently active.</p>';
+            return;
+        }
+
+        mockTools.forEach((tool, index) => {
+            const toolCard = document.createElement('div');
+            toolCard.className = 'd-flex justify-content-between align-items-center bg-white p-3 rounded-3 shadow-sm border border-secondary-subtle';
+            toolCard.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        ${createIcon(Icons.tool, 'w-4 h-4 text-success me-3')}
+                        <div>
+                            <p class="fw-semibold text-dark mb-0">${tool.name}</p>
+                            <p class="small text-secondary mb-0">${tool.description}</p>
+                        </div>
+                    </div>
+                    <button onclick="removeTool(${index})" class="btn btn-sm text-danger-emphasis p-1 rounded-circle">
+                        ${createIcon(Icons.trash, 'w-4 h-4')}
+                    </button>
+                `;
+            toolsContainer.appendChild(toolCard);
+        });
+    }
+
+    function removeTool(index) {
+        const toolName = mockTools[index].name;
+        mockTools.splice(index, 1);
+        renderToolsPanel();
+        console.log(`Tool removed: ${toolName}`);
+        const message = { id: Date.now(), role: 'ai', content: `Tool **${toolName}** has been successfully removed from your active tools.` };
+        mockMessages[currentChatId].push(message);
+        renderMessages(currentChatId);
+    }
+
+    function displayNewToolAlert(toolName) {
+        const toolAlert = document.getElementById('tool-alert');
+        toolAlert.querySelector('#tool-name-display').textContent = toolName;
+
+        toolAlert.classList.add('tool-alert-show');
+
+        setTimeout(() => {
+            toolAlert.classList.remove('tool-alert-show');
+        }, 5000);
+    }
+
+    function sendMessage() {
+        const inputElement = document.getElementById('chat-input');
+        const messageText = inputElement.value.trim();
+
+        if (messageText === '') return;
+
+        const userMessage = { id: Date.now(), role: 'user', content: messageText };
+        if (!mockMessages[currentChatId]) {
+            const newChatTitle = messageText.substring(0, 30) + '...';
+            const newChatId = 'chat-' + Date.now();
+            mockChats.unshift({ id: newChatId, title: newChatTitle, lastMessage: messageText });
+            mockMessages[newChatId] = [...mockMessages['new-chat'], userMessage];
+
+            loadChat(newChatId);
+        } else {
+            mockMessages[currentChatId].push(userMessage);
+        }
+        renderMessages(currentChatId);
+        inputElement.value = '';
+        inputElement.disabled = true;
+
+        document.getElementById('send-button').innerHTML = createIcon("M4 12v-6a2 2 0 012-2h12a2 2 0 012 2v6", 'w-5 h-5 animate-spin');
+
+        setTimeout(() => {
+            const aiResponse = {
+                id: Date.now() + 1,
+                role: 'ai',
+                content: `I received your message: *"${messageText}"*. I'm processing this with my available tools. The REST API acknowledged the request.`
+            };
+
+            mockMessages[currentChatId].push(aiResponse);
+
+            if (messageText.toLowerCase().includes('make a new tool')) {
+                const newTool = { name: 'DB Query Tool', description: 'Allows secure queries to the mock DB.' };
+                mockTools.unshift(newTool);
+                mockMessages[currentChatId].push({
+                    id: Date.now() + 2,
+                    role: 'ai',
+                    content: `**New Tool Created!** The **${newTool.name}** is now available. I will use it to complete your request.`
+                });
+                displayNewToolAlert(newTool.name);
+                renderToolsPanel();
+            }
+
+            renderMessages(currentChatId);
+            document.getElementById('send-button').innerHTML = createIcon(Icons.send);
+            inputElement.disabled = false;
+            inputElement.focus();
+
+            const currentChat = mockChats.find(c => c.id === currentChatId);
+            if (currentChat) {
+                currentChat.lastMessage = messageText;
+            }
+            renderSidebar();
+
+        }, 1500);
+    }
+
+    window.onload = initApp;
+
+    window.onresize = () => {
+        if (window.innerWidth >= 992) {
+            document.body.classList.add('sidebar-open');
+            document.getElementById('overlay').classList.add('d-none');
+        } else {
+            // If resizing smaller than lg, ensure mobile logic applies if needed
+            if (!isLoggedIn) return; // Don't run if not logged in
+            const overlay = document.getElementById('overlay');
+            if (!overlay.classList.contains('d-none')) {
+                document.body.classList.add('sidebar-open');
+            } else {
+                document.body.classList.remove('sidebar-open');
+            }
+        }
+    };
+</script>
+
+
+<!-- Overlay for mobile sidebar -->
+<div id="overlay" onclick="toggleSidebar()" class="d-none d-lg-none"></div>
+
+<!-- Login Screen -->
+<div id="login-screen" class="min-vh-100 d-flex align-items-center justify-content-start bg-light p-4">
+    <div class="bg-white p-4 rounded-3 shadow-lg w-100" style="max-width: 400px;">
+        <h1 class="fs-2 fw-bold text-center text-primary mb-4">AI Assistant Login</h1>
+
+        <div class="d-grid gap-3">
+            <div>
+                <label for="username" class="form-label small fw-medium text-dark">User ID / Nickname</label>
+                <input type="text" id="username" class="form-control form-control-lg rounded-3 shadow-sm focus-ring" placeholder="e.g., dev-user-123" required>
+            </div>
+            <div id="login-error" class="small text-danger text-center"></div>
+
+            <button onclick="mockLogin()" class="btn btn-primary btn-lg rounded-3 shadow-sm fw-medium transition-all">
+                Start Chat Session
+            </button>
+        </div>
+        <p class="mt-4 text-center small text-muted">
+            Your chat data will be securely stored via the Python REST API & PostgreSQL.
+        </p>
+    </div>
+</div>
+
+<!-- Main Application Screen -->
+<div id="app-screen" class="d-none app-layout">
+
+    <!-- Sidebar - Past Chats and Tools -->
+    <aside id="sidebar" class="bg-dark text-white d-flex flex-column p-4 h-100">
+
+        <!-- 1. Transparent Logo Section -->
+        <div class="mb-4 p-3 rounded-3" style="background-color: rgba(255, 255, 255, 0.05);">
+            <h3 class="text-white opacity-75 fs-5 mb-0">AI Project Logo</h3>
+        </div>
+
+        <!-- Sidebar Header & New Chat -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="fs-4 fw-bold">Assistant</h2>
+            <button onclick="toggleSidebar()" class="btn btn-sm text-light d-lg-none p-2 rounded-circle">
+                ${createIcon(Icons.x)}
+            </button>
+        </div>
+
+        <button onclick="startNewChat()" class="btn btn-primary w-100 d-flex align-items-center justify-content-center py-2 px-3 rounded-3 fw-semibold shadow-sm mb-4">
+            ${createIcon(Icons.plus, 'w-5 h-5 me-2')} New Chat
+        </button>
+
+        <!-- Tools List -->
+        <div class="mb-4">
+            <h3 class="small fw-semibold text-secondary text-uppercase mb-2">Active AI Tools</h3>
+            <div id="active-tools-list" class="d-grid gap-2 bg-dark rounded-3 p-2">
+                <!-- Tools rendered here by JS -->
+            </div>
+        </div>
+
+        <!-- Past Chats -->
+        <div class="flex-grow-1 overflow-auto">
+            <h3 class="small fw-semibold text-secondary text-uppercase mb-2">Past Chats</h3>
+            <ul id="chat-list" class="list-unstyled">
+                <!-- Chat items rendered here by JS -->
+            </ul>
+        </div>
+
+        <!-- Footer / User Info -->
+        <div class="mt-4 pt-3 border-top border-secondary">
+            <div id="user-id-display" class="small text-secondary text-truncate mb-2">User ID: loading...</div>
+            <button onclick="mockLogout()" class="btn btn-sm w-100 text-start text-danger-emphasis p-2 rounded-3 hover-bg-dark-subtle">
+                ${createIcon(Icons.logOut, 'w-4 h-4 me-2')} Log Out
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="flex-grow-1 d-flex flex-column bg-light position-relative">
+
+        <!-- Chat Header -->
+        <header class="bg-white p-3 shadow-sm d-flex align-items-center justify-content-between sticky-top z-10">
+            <div class="d-flex align-items-center">
+                <button onclick="toggleSidebar()" class="btn btn-sm text-secondary d-lg-none p-2 rounded-circle me-3">
+                    ${createIcon(Icons.menu)}
+                </button>
+                <h1 id="chat-title" class="fs-5 fw-bold text-dark text-truncate mb-0">New Chat - ID: new-chat</h1>
+            </div>
+            <div class="text-secondary">
+                ${createIcon(Icons.messageSquare, 'w-6 h-6')}
+            </div>
+        </header>
+
+        <!-- Message Container -->
+        <div id="message-container" class="flex-grow-1 overflow-auto p-4 d-flex flex-column">
+            <!-- Messages rendered here by JS -->
+        </div>
+
+        <!-- Chat Input -->
+        <div class="p-3 bg-white border-top border-light sticky-bottom z-10">
+            <div class="d-flex align-items-center mx-auto" style="max-width: 900px;">
+                    <textarea id="chat-input"
+                              class="form-control flex-grow-1 p-3 border rounded-3 resize-none focus-ring me-3"
+                              placeholder="Ask a question or request a new tool..."
+                              rows="1"
+                              oninput="this.style.height='auto'; this.style.height=(this.scrollHeight)+'px';"
+                              onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
+
+                <button id="send-button" onclick="sendMessage()"
+                        class="btn btn-primary p-3 rounded-3 shadow-sm d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                    ${createIcon(Icons.send)}
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Tool Creation Alert -->
+    <div id="tool-alert" class="position-fixed p-3 bg-success text-white rounded-3 shadow-lg d-flex align-items-center" style="max-width: 300px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 me-3">
+            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+        </svg>
+        <div>
+            <p class="fw-bold mb-0">New Tool Available!</p>
+            <p class="small mb-0" id="tool-name-display"></p>
+        </div>
+    </div>
+
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+</body>
+</html>
