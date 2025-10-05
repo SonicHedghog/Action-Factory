@@ -2,8 +2,8 @@
 -- Represents individual users of the system.
 CREATE TABLE USERS (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL, -- Added UNIQUE constraint for name
-    hashed_password VARCHAR(255) NOT NULL,
+    name VARCHAR(20) UNIQUE NOT NULL, -- Added UNIQUE constraint for name, max 20 chars
+    hashed_password VARCHAR(80) NOT NULL  -- Increased length to accommodate bcrypt hashes
 );
 
 -- 2. TOOLS Table

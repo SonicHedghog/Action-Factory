@@ -10,3 +10,6 @@ google-generativeai
 python-multipart
 python-jose[cryptography]
 passlib[bcrypt]
+pytest>=7.0.0
+httpx
+pytest-mock
