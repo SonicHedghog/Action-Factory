@@ -1,0 +1,11 @@
+{
+  "google_search": {
+    "description": "Search Google for information about a query.\n\nArgs:\n    query: The search query string\n\nReturns:\n    Search results or instructions for setting up API access"
+  },
+  "test_function": {
+    "description": "A simple test function"
+  },
+  "fibonacci": {
+    "description": "Calculate the nth Fibonacci number"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "google_search": {
+    "description": "Search Google for information about a query.\n\nArgs:\n    query: The search query string\n\nReturns:\n    Search results or instructions for setting up API access"
+  },
+  "calculate_math": {
+    "description": "Safely evaluate mathematical expressions.\n\nArgs:\n    expression: Mathematical expression to evaluate (e.g., \"2 + 3 * 4\")\n\nReturns:\n    Result of the calculation or error message"
+  },
+  "current_time": {
+    "description": "Get the current date and time.\n\nArgs:\n    format_str: Format string for the datetime (default: \"%Y-%m-%d %H:%M:%S\")\n\nReturns:\n    Current date and time as formatted string"
+  },
+  "generate_random_number": {
+    "description": "Generate a random number within a specified range.\n\nArgs:\n    min_val: Minimum value (inclusive)\n    max_val: Maximum value (inclusive)\n\nReturns:\n    Random number as string"
+  },
+  "text_analyzer": {
+    "description": "Analyze text and provide basic statistics.\n\nArgs:\n    text: Text to analyze\n\nReturns:\n    Analysis results including word count, character count, etc."
+  },
+  "json_formatter": {
+    "description": "Format and validate JSON data.\n\nArgs:\n    data: JSON string to format\n\nReturns:\n    Formatted JSON or error message"
+  },
+  "password_generator": {
+    "description": "Generate a secure random password.\n\nArgs:\n    length: Length of the password (default: 12)\n    include_symbols: Whether to include symbols (default: True)\n\nReturns:\n    Generated password"
+  },
+  "url_validator": {
+    "description": "Validate if a URL is properly formatted.\n\nArgs:\n    url: URL to validate\n\nReturns:\n    Validation result and analysis"
+  },
+  "test_function": {
+    "description": "A simple test function"
+  },
+  "fibonacci": {
+    "description": "Calculate the nth Fibonacci number"
+  }
+}

@@ -1,0 +1,10 @@
+langchain
+langchain-openai
+langchain-google-genai
+langchain-community
+python-dotenv
+psycopg2-binary
+fastapi
+uvicorn
+pytest
+hypothesis
