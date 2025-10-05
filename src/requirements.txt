@@ -1,0 +1,12 @@
+langgraph
+langchain-core
+langchain
+typing-extensions
+fastapi
+uvicorn[standard]
+pydantic
+asyncpg
+google-generativeai
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
