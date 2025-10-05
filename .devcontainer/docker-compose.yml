@@ -7,6 +7,12 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ..:/workspace:cached
+    # Keep the container alive for the Dev Container tooling so VS Code can attach.
+    # This is a development-time override; remove or replace with your real dev server
+    # command when you're ready to run the app process inside the container.
+    command: tail -f /dev/null
+    tty: true
+    stdin_open: true
     depends_on:
       - db
     environment:
