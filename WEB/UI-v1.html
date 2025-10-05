@@ -4,23 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Assistant MVP (Bootstrap)</title>
-
+    
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-
+    
     <style>
         /* Custom font import for a modern feel, similar to Inter */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-
+        
         body {
             font-family: 'Inter', sans-serif;
             /* === START: BACKGROUND IMAGE STYLES === */
-            background: url('https://t3.ftcdn.net/jpg/05/01/52/36/240_F_501523654_iTeRiR15SpnekpBQCWf11sip7THqF5oU.jpg') no-repeat center center fixed;
-            -webkit-background-size: cover;
-            -moz-background-size: cover;
-            -o-background-size: cover;
-            background-size: cover; /* Fallback for bg-light */
+            background: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRMdhZQ2xuQCD9QjeptR1kyp4Hko1Fx-tNXTkJ_QZj0Xh-ifZqQyrPtyk&s') no-repeat center center fixed;
+            background-size: cover;
             /* === END: BACKGROUND IMAGE STYLES === */
+        }
+
+        /* --- BASE APP COLORS (Light Mode with Transparency) --- */
+        .bg-main-light { background-color: rgba(248, 249, 250, 0.95); } /* main area */
+        .bg-component-light { background-color: rgba(255, 255, 255, 0.95); } /* header, input, login card */
+        .bg-sidebar-dark { background-color: rgba(33, 37, 41, 0.95); } /* sidebar */
+        .text-body-color { color: #212529 !important; } /* Bootstrap dark text */
+
+
+        /* --- DARK MODE OVERRIDES --- */
+        .dark-mode {
+            color: #f8f9fa !important; /* Global text color for dark mode */
+        }
+        
+        .dark-mode .bg-main-light {
+            background-color: rgba(18, 18, 18, 0.95) !important;
+        }
+
+        .dark-mode .bg-component-light {
+            background-color: rgba(30, 30, 30, 0.95) !important;
+        }
+
+        .dark-mode .bg-sidebar-dark {
+            background-color: rgba(0, 0, 0, 0.95) !important;
+        }
+        
+        /* Text and button color overrides for dark mode elements */
+        .dark-mode .text-body-color {
+            color: #f8f9fa !important;
+        }
+        .dark-mode .text-dark {
+            color: #f8f9fa !important;
+        }
+        .dark-mode .text-secondary {
+            color: #adb5bd !important;
+        }
+        .dark-mode .text-muted {
+            color: #999 !important;
+        }
+        /* AI chat bubble */
+        .dark-mode .chat-message.bg-white {
+            background-color: rgba(45, 45, 45, 0.98) !important;
+            color: #f8f9fa !important;
+        }
+        /* Tool cards */
+        .dark-mode #active-tools-list .p-3 {
+            background-color: rgba(45, 45, 45, 0.95) !important;
         }
 
         /* Custom scrollbar for chat area (Bootstrap doesn't include scrollbar utilities) */
@@ -34,7 +78,7 @@
         #message-container::-webkit-scrollbar-track {
             background-color: transparent;
         }
-
+        
         .chat-message {
             max-width: 85%;
         }
@@ -66,7 +110,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.5); 
             z-index: 1040;
             display: none;
         }
@@ -97,11 +141,11 @@
         }
     </style>
 </head>
-<body class="bg-light text-dark">
+<body class="text-body-color">
 
 <!-- Mock Global Variables for UI Demo -->
 <script>
-    const __app_id = 'ai-assistant-mvp-1';
+    const __app_id = 'ai-assistant-mvp-1'; 
     let currentUserId = 'user_' + Math.random().toString(36).substring(2, 9);
     let currentChatId = null;
     let mockChats = [
@@ -124,6 +168,7 @@
     ];
 
     let isLoggedIn = false;
+    let isDarkMode = false;
 
     /** Utility Functions */
 
@@ -145,12 +190,19 @@
         trash: "M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2",
         logOut: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
         user: "M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2",
-        messageSquare: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+        messageSquare: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
+        sun: "M12 17a5 5 0 100-10 5 5 0 000 10zM12 2v2M12 20v2M4 12H2M22 12h-2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 17.1l1.4-1.4M17.7 6.3l1.4-1.4",
+        moon: "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
     };
 
     /** App State & Logic */
 
     function initApp() {
+        // Load Dark Mode Preference
+        const storedMode = localStorage.getItem('darkMode');
+        isDarkMode = storedMode === 'true';
+        applyDarkMode(isDarkMode);
+
         isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
 
         // Check for large screen size to determine initial sidebar state
@@ -164,7 +216,7 @@
         if (isLoggedIn) {
             document.getElementById('login-screen').classList.add('d-none');
             document.getElementById('app-screen').classList.remove('d-none');
-            startNewChat(false);
+            startNewChat(false); 
             renderSidebar();
             renderUserId();
             renderToolsPanel();
@@ -172,6 +224,31 @@
             document.getElementById('login-screen').classList.remove('d-none');
             document.getElementById('app-screen').classList.add('d-none');
         }
+    }
+    
+    function applyDarkMode(enable) {
+        const toggleButton = document.getElementById('dark-mode-toggle');
+        
+        if (enable) {
+            document.body.classList.add('dark-mode');
+            if (toggleButton) {
+                toggleButton.innerHTML = createIcon(Icons.sun);
+                toggleButton.classList.add('text-warning');
+            }
+        } else {
+            document.body.classList.remove('dark-mode');
+            if (toggleButton) {
+                toggleButton.innerHTML = createIcon(Icons.moon);
+                toggleButton.classList.remove('text-warning');
+            }
+        }
+        isDarkMode = enable;
+    }
+
+    function toggleDarkMode() {
+        const newMode = !isDarkMode;
+        localStorage.setItem('darkMode', newMode);
+        applyDarkMode(newMode);
     }
 
     function renderUserId() {
@@ -219,6 +296,7 @@
             const isActive = currentChatId === chat.id;
             const li = document.createElement('li');
             li.className = 'w-100 mb-1';
+            // Note: Sidebar elements use specific Bootstrap colors that get overridden by the .dark-mode CSS
             li.innerHTML = `
                     <button onclick="loadChat('${chat.id}')" class="btn w-100 text-start p-3 rounded-3 transition-colors ${isActive ? 'btn-primary text-white shadow' : 'text-light bg-dark-subtle border-0 hover-bg-secondary'}">
                         <div class="fw-medium text-truncate">${chat.title}</div>
@@ -287,6 +365,7 @@
 
         mockTools.forEach((tool, index) => {
             const toolCard = document.createElement('div');
+            // Using bg-white and text-dark which are overridden by .dark-mode CSS
             toolCard.className = 'd-flex justify-content-between align-items-center bg-white p-3 rounded-3 shadow-sm border border-secondary-subtle';
             toolCard.innerHTML = `
                     <div class="d-flex align-items-center">
@@ -407,13 +486,14 @@
 <div id="overlay" onclick="toggleSidebar()" class="d-none d-lg-none"></div>
 
 <!-- Login Screen -->
-<div id="login-screen" class="min-vh-100 d-flex align-items-center justify-content-start bg-light p-4">
-    <div class="bg-white p-4 rounded-3 shadow-lg w-100" style="max-width: 400px;">
-        <h1 class="fs-2 fw-bold text-center text-primary mb-4">AI Assistant Login</h1>
-
+<div id="login-screen" class="min-vh-100 d-flex align-items-center justify-content-start p-4">
+    <!-- Uses bg-component-light for transparent white background -->
+    <div class="bg-component-light p-4 rounded-3 shadow-lg w-100" style="max-width: 400px;">
+        <h1 class="fs-2 fw-bold text-center text-primary mb-4 text-body-color">AI Assistant Login</h1>
+        
         <div class="d-grid gap-3">
             <div>
-                <label for="username" class="form-label small fw-medium text-dark">User ID / Nickname</label>
+                <label for="username" class="form-label small fw-medium text-body-color">User ID / Nickname</label>
                 <input type="text" id="username" class="form-control form-control-lg rounded-3 shadow-sm focus-ring" placeholder="e.g., dev-user-123" required>
             </div>
             <div id="login-error" class="small text-danger text-center"></div>
@@ -432,7 +512,8 @@
 <div id="app-screen" class="d-none app-layout">
 
     <!-- Sidebar - Past Chats and Tools -->
-    <aside id="sidebar" class="bg-dark text-white d-flex flex-column p-4 h-100">
+    <!-- Uses bg-sidebar-dark for transparent dark background -->
+    <aside id="sidebar" class="text-white d-flex flex-column p-4 h-100 bg-sidebar-dark">
 
         <!-- 1. Transparent Logo Section -->
         <div class="mb-4 p-3 rounded-3" style="background-color: rgba(255, 255, 255, 0.05);">
@@ -477,18 +558,27 @@
     </aside>
 
     <!-- Main Chat Area -->
-    <main class="flex-grow-1 d-flex flex-column bg-light position-relative">
+    <!-- Uses bg-main-light for transparent background -->
+    <main class="flex-grow-1 d-flex flex-column position-relative bg-main-light">
 
         <!-- Chat Header -->
-        <header class="bg-white p-3 shadow-sm d-flex align-items-center justify-content-between sticky-top z-10">
+        <!-- Uses bg-component-light for transparent white background -->
+        <header class="bg-component-light p-3 shadow-sm d-flex align-items-center justify-content-between sticky-top z-10">
             <div class="d-flex align-items-center">
                 <button onclick="toggleSidebar()" class="btn btn-sm text-secondary d-lg-none p-2 rounded-circle me-3">
                     ${createIcon(Icons.menu)}
                 </button>
-                <h1 id="chat-title" class="fs-5 fw-bold text-dark text-truncate mb-0">New Chat - ID: new-chat</h1>
+                <h1 id="chat-title" class="fs-5 fw-bold text-dark text-truncate mb-0 text-body-color">New Chat - ID: new-chat</h1>
             </div>
-            <div class="text-secondary">
-                ${createIcon(Icons.messageSquare, 'w-6 h-6')}
+            
+            <div class="d-flex align-items-center">
+                <!-- Dark Mode Toggle Button -->
+                <button id="dark-mode-toggle" onclick="toggleDarkMode()" class="btn btn-sm text-secondary p-2 rounded-circle me-2">
+                    <!-- Icon populated by JS: initApp() -->
+                </button>
+                <div class="text-secondary">
+                    ${createIcon(Icons.messageSquare, 'w-6 h-6')}
+                </div>
             </div>
         </header>
 
@@ -498,7 +588,8 @@
         </div>
 
         <!-- Chat Input -->
-        <div class="p-3 bg-white border-top border-light sticky-bottom z-10">
+        <!-- Uses bg-component-light for transparent white background -->
+        <div class="p-3 border-top border-light sticky-bottom z-10 bg-component-light">
             <div class="d-flex align-items-center mx-auto" style="max-width: 900px;">
                     <textarea id="chat-input"
                               class="form-control flex-grow-1 p-3 border rounded-3 resize-none focus-ring me-3"
